@@ -29,12 +29,11 @@ const generateSummary = async (text) => {
     );
 
   } catch (error) {
-    console.error(
-      "Gemini Error:",
-      error.response?.data || error.message
-    );
+// This will show the actual Google error message in your Postman response
+    const errorMessage = error.response?.data?.error?.message || error.message;
+    console.error("Gemini Error:", errorMessage);
 
-    return "Summary not generated";
+    return `Error: ${errorMessage}`;
   }
 };
 
