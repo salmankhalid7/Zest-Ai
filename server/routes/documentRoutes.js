@@ -10,7 +10,6 @@ const {
   deleteDocument,
 } = require("../controllers/documentController");
 
-// 📄 Upload PDF (PROTECTED)
 router.post(
   "/upload",
   auth,

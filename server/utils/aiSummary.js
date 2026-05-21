@@ -1,39 +1,27 @@
-const axios = require("axios");
-require("dotenv").config();
+const OpenAI = require("openai");
+
+const client = new OpenAI({
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: "https://api.groq.com/openai/v1",
+});
 
 const generateSummary = async (text) => {
   try {
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        contents: [
-          {
-            parts: [
-              {
-                text: `Summarize this document in simple bullet points:\n\n${text}`,
-              },
-            ],
-          },
-        ],
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
+    const response = await client.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "user",
+          content: `Summarize this PDF:\n\n${text}`,
         },
-      }
-    );
+      ],
+    });
 
-    return (
-      response.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "Summary not generated"
-    );
+    return response.choices[0].message.content;
 
-  } catch (error) {
-// This will show the actual Google error message in your Postman response
-    const errorMessage = error.response?.data?.error?.message || error.message;
-    console.error("Gemini Error:", errorMessage);
-
-    return `Error: ${errorMessage}`;
+  } catch (err) {
+    console.error(err);
+    return "Summary failed";
   }
 };
 
