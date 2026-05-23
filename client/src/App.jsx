@@ -1,26 +1,35 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import AuthSuccess from "../src/Pages/AuthSuccess";
-import Dashboard from "./Pages/Dashboard";
-import Login from "./Pages/Login";
-import ProtectedRoute from "../src/components/ProtectedRoute";
-import Home from "./Pages/Home";
 import { pdfjs } from "react-pdf";
 
+// Pages
+import Home from "./Pages/Home";
+import Login from "./Pages/Login";
+import Signup from "./Pages/Signup";
+import Dashboard from "./Pages/Dashboard";
+import AuthSuccess from "./Pages/AuthSuccess";
+import Flashcards from "./Pages/Flashcards";
+import Quiz from "./Pages/Quiz";
+import Favorites from "./Pages/Favorites";
+
+// Components
+import ProtectedRoute from "./components/ProtectedRoute";
+
+// PDF worker setup
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 const App = () => {
   return (
     <Router>
       <Routes>
-        {/* Auth success callback */}
+
+        {/* ================= PUBLIC ROUTES ================= */}
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
         <Route path="/auth/success" element={<AuthSuccess />} />
 
-        {/* Public routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Home />} />
-
-        {/* Protected route */}
+        {/* ================= PROTECTED ROUTES ================= */}
         <Route
           path="/dashboard"
           element={
@@ -29,6 +38,34 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/flashcards/:id"
+          element={
+            <ProtectedRoute>
+              <Flashcards />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/quiz/:id"
+          element={
+            <ProtectedRoute>
+              <Quiz />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/favorites"
+          element={
+            <ProtectedRoute>
+              <Favorites />
+            </ProtectedRoute>
+          }
+        />
+
       </Routes>
     </Router>
   );

@@ -1,38 +1,66 @@
-const axios = require("axios");
+const OpenAI = require("openai");
+
+// Initialize and sanitize the Groq API key
+const apiKey = process.env.GROQ_API_KEY ? process.env.GROQ_API_KEY.trim() : "";
+
+const client = new OpenAI({
+  apiKey: apiKey,
+  baseURL: "https://api.groq.com/openai/v1",
+});
 
 const askAIAboutPDF = async (chunks, question) => {
   try {
-    // take only first 3 chunks (simple version)
+    // 1. Guard check for input validity
+    if (!question || question.trim() === "") {
+      return "Please provide a valid question.";
+    }
+
+    if (!chunks || chunks.length === 0) {
+      return "Not found in document.";
+    }
+
+    if (!apiKey) {
+      console.error("GROQ_API_KEY is missing from environment configurations.");
+      return "AI configuration error.";
+    }
+
+    // 2. Safely isolate the top 3 contextual text chunks
     const context = chunks.slice(0, 3).join("\n\n");
 
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        contents: [
-          {
-            parts: [
-              {
-                text: `
-You are a PDF assistant.
+    // 3. Trigger the Groq chat completion request
+    const response = await client.chat.completions.create({
+      model: "llama-3.3-70b-versatile", // High reasoning capacity for scanning text blocks
+      temperature: 0.2, // Low temperature forces high accuracy to the text context
+      messages: [
+        {
+          role: "system",
+          content: `
+You are a highly precise PDF document assistant. 
 
-Use ONLY this context:
-
+CRITICAL DIRECTIVES:
+- Answer the question using ONLY the provided text context chunks.
+- Keep your answers clean, direct, and academic.
+- If the answer cannot be confidently found within the context chunks below, you must reply EXACTLY with: "Not found in document."
+          `,
+        },
+        {
+          role: "user",
+          content: `
+CONTEXT CHUNKS:
 ${context}
 
 QUESTION:
 ${question}
+          `,
+        },
+      ],
+    });
 
-If answer is not in context, say "Not found in document."
-                `,
-              },
-            ],
-          },
-        ],
-      }
-    );
+    // 4. Return the raw string answer from the assistant
+    return response.choices[0].message.content;
 
-    return response.data.candidates[0].content.parts[0].text;
   } catch (error) {
+    console.error("SMART SEARCH SERVICE ERROR:", error.message);
     return "AI error occurred";
   }
 };
