@@ -1,120 +1,136 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import Navbar from "../components/Navbar"
-import Footer from "../components/Footer"
+import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
+
+import LearningIllustration from "../assets/images/1.svg";
+import LogoMarquee from "../components/LogoMarquee";
+import HowItWorks from "../components/HowItWorks";
+import TrialModal from "../components/TrialModal";
+
 const Home = () => {
+  // Modal state management flags
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalInitialSignUp, setModalInitialSignUp] = useState(true);
+
+  // Smooth scroll handler function
+  const handleScroll = (e, id) => {
+    e.preventDefault();
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  };
+
+  // Trigger modal wrapper with custom flow flags
+  const openAuthModal = (e, targetSignUpMode) => {
+    e.preventDefault();
+    setModalInitialSignUp(targetSignUpMode);
+    setIsModalOpen(true);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 via-white to-white font-sans">
-      <Navbar/>
+    <div className="min-h-screen bg-white text-black overflow-x-hidden relative">
+      <Navbar />
 
-      {/* HERO */}
-      <section className="max-w-4xl mx-auto px-6 pt-20 pb-12 text-center">
+      {/* HERO SECTION */}
+      <section className="w-full max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 pt-12 sm:pt-20 pb-16 sm:pb-24">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          
+          {/* LEFT CONTENT */}
+          <div className="text-center lg:text-left space-y-6">
+            {/* HEADLINE */}
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight">
+              Learn Smarter with <br className="hidden sm:block" />
+              <span>Zest AI</span>{" "}
+              <span className="text-black/60">Instantly</span>
+            </h1>
 
-        <h1 className="text-5xl md:text-6xl font-bold text-gray-900 leading-tight">
-          Learn faster with{" "}
-          <span className="text-green-600">AI flashcards</span>
-        </h1>
-
-        <p className="mt-6 text-lg text-gray-600 max-w-2xl mx-auto">
-          Turn any document into smart flashcards and quizzes. Study smarter, not harder.
-        </p>
-
-        {/* CTA */}
-        <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-
-          <a
-            href="http://localhost:5000/auth/google"
-            className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium shadow-md transition"
-          >
-            Get Started Free
-          </a>
-
-          <Link
-            to="/login"
-            className="px-6 py-3 border border-green-200 text-green-700 rounded-xl font-medium hover:bg-green-50 transition"
-          >
-            Login
-          </Link>
-
-        </div>
-
-      </section>
-
-      {/* FEATURES */}
-      <section className="max-w-5xl mx-auto px-6 py-12 grid md:grid-cols-3 gap-6">
-
-        {[
-          {
-            title: "AI Flashcards",
-            desc: "Auto-generate structured flashcards from PDFs.",
-          },
-          {
-            title: "Smart Quizzes",
-            desc: "Test yourself with AI-generated questions.",
-          },
-          {
-            title: "Save & Review",
-            desc: "Bookmark important cards for revision.",
-          },
-        ].map((item, i) => (
-          <div
-            key={i}
-            className="p-6 rounded-2xl border border-green-100 bg-white hover:shadow-md transition"
-          >
-            <h3 className="font-semibold text-green-700 mb-2">
-              {item.title}
-            </h3>
-            <p className="text-sm text-gray-600">
-              {item.desc}
+            {/* DESCRIPTION */}
+            <p className="text-base sm:text-lg text-black/70 max-w-xl mx-auto lg:mx-0 leading-relaxed">
+              Zest AI transforms your study materials into{" "}
+              <span className="font-semibold text-black">
+                structured learning paths, flashcards, and adaptive quizzes
+              </span>
+              , helping you learn faster with a fully personalized AI system.
             </p>
+
+            {/* RATING */}
+            <div className="flex items-center justify-center lg:justify-start gap-2 text-sm text-black/80">
+              <span className="text-yellow-500 tracking-widest">★★★★★</span>
+              <span>4.8/5 from 2,300+ learners</span>
+            </div>
+
+            {/* CTA */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-2">
+              {/* INTERCEPT BUTTON FOR POPUP INJECTION */}
+              <button
+                onClick={(e) => openAuthModal(e, true)}
+                className="px-7 py-3.5 bg-black text-white rounded-lg font-medium hover:opacity-90 transition text-center shadow-sm focus:outline-none"
+              >
+                Start Free Trial
+              </button>
+
+              {/* SMOOTH SCROLL ANCHOR LINK */}
+              <a
+                href="#how-it-works"
+                onClick={(e) => handleScroll(e, "how-it-works")}
+                className="px-7 py-3.5 border border-black text-black rounded-lg font-medium hover:bg-black hover:text-white transition text-center"
+              >
+                How It Works
+              </a>
+            </div>
+
+            {/* FEATURES TICKS */}
+            <div className="flex flex-wrap justify-center lg:justify-start gap-4 sm:gap-6 text-sm pt-2">
+              {[
+                "Learning Analytics",
+                "Smart Quizzes",
+                "PDF Upload"
+              ].map((item) => (
+                <span key={item} className="flex items-center gap-2 font-medium text-gray-500">
+                  <span className="flex items-center justify-center w-5 h-5 bg-emerald-500 text-white rounded-full text-[10px] font-bold">
+                    ✓
+                  </span>
+                  {item}
+                </span>
+              ))}
+            </div>
           </div>
-        ))}
 
-      </section>
-
-      {/* AUTH CARD */}
-      <section className="max-w-md mx-auto px-6 py-10">
-
-        <div className="bg-white border border-green-100 rounded-2xl shadow-lg p-8">
-
-          <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
-            Start Learning
-          </h2>
-
-          {/* GOOGLE */}
-          <a
-            href="http://localhost:5000/auth/google"
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 mb-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition text-gray-700"
-          >
-            Continue with Google
-          </a>
-
-          <div className="flex items-center my-5">
-            <div className="flex-1 h-px bg-gray-200"></div>
-            <span className="px-3 text-xs text-gray-400">or</span>
-            <div className="flex-1 h-px bg-gray-200"></div>
+          {/* RIGHT IMAGE */}
+          <div className="flex justify-center lg:justify-end">
+            <div className="w-full max-w-sm sm:max-w-md lg:max-w-xl">
+              <img
+                src={LearningIllustration}
+                alt="Zest AI Learning Platform"
+                className="w-full h-auto object-contain"
+              />
+            </div>
           </div>
-
-          {/* EMAIL */}
-          <Link
-            to="/login"
-            className="w-full block text-center bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-medium transition"
-          >
-            Continue with Email
-          </Link>
-
-          {/* SIGNUP */}
-          <p className="text-center text-sm text-gray-500 mt-5">
-            New here?{" "}
-            <Link to="/signup" className="text-green-600 font-medium">
-              Create account
-            </Link>
-          </p>
 
         </div>
-
       </section>
-      <Footer/>
+
+      {/* TRUST MARQUEE */}
+      <LogoMarquee />
+
+      {/* HOW IT WORKS SECTION WITH ANCHOR ID */}
+      <div id="how-it-works" className="scroll-mt-16">
+        <HowItWorks />
+      </div>
+
+      <Footer />
+
+      {/* UNIFIED MODAL OVERLAY PORTAL */}
+      <TrialModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        isSignUpInitial={modalInitialSignUp}
+      />
     </div>
   );
 };
