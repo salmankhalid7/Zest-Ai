@@ -24,7 +24,26 @@ const Flashcards = () => {
       }
 
       setLoading(true);
-      const res = await axios.post(`http://localhost:5000/api/flashcards/${id}`);
+
+      // ✅ TOKEN GUARD: Check if user is logged in before firing the API request
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("You must be logged in to view or generate flashcards.");
+        setLoading(false);
+        return;
+      }
+
+      // ✅ FIXED: Token is attached, and an empty body object {} is passed as the second argument
+      const res = await axios.post(
+        `http://localhost:5000/api/flashcards/${id}`,
+        {}, 
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
       setFlashcardSet(res.data.flashcards);
       setLoading(false);
     } catch (err) {
@@ -44,6 +63,11 @@ const Flashcards = () => {
     try {
       setIsSaving(true);
       const token = localStorage.getItem("token");
+
+      if (!token) {
+        alert("You must be logged in to save favorites.");
+        return;
+      }
 
       await axios.post(
         "http://localhost:5000/api/favorites",
@@ -78,8 +102,15 @@ const Flashcards = () => {
   
   if (error) return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white flex items-center justify-center">
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
-        <h3 className="text-xl text-red-600">❌ {error}</h3>
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md shadow-sm">
+        <h3 className="text-xl text-red-600 font-semibold mb-2">Error Encountered</h3>
+        <p className="text-red-700">{error}</p>
+        <button 
+          onClick={() => navigate("/dashboard")}
+          className="mt-4 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition"
+        >
+          Return to Dashboard
+        </button>
       </div>
     </div>
   );
@@ -88,8 +119,14 @@ const Flashcards = () => {
   if (cards.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-white flex items-center justify-center">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <h3 className="text-xl text-yellow-700">No flashcards found for this document.</h3>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 max-w-md text-center shadow-sm">
+          <h3 className="text-xl text-yellow-700 font-medium mb-4">No flashcards found for this document.</h3>
+          <button 
+            onClick={() => navigate("/dashboard")}
+            className="px-4 py-2 bg-yellow-600 text-white text-sm font-medium rounded-md hover:bg-yellow-700 transition"
+          >
+            Return to Dashboard
+          </button>
         </div>
       </div>
     );

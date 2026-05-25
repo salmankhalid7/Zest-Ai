@@ -2,12 +2,9 @@ const Document = require("../models/Document");
 const axios = require("axios");
 const generateSummary = require("../utils/aiSummary");
 const cloudinary = require("../config/cloudinary");
-const uploadToCloudinary = require("../utils/uploadToCloudinary")
-
-// Change your import to:
+const uploadToCloudinary = require("../utils/uploadToCloudinary");
 const pdfParse = require("pdf-parse-fork");
 
-// And parsePDF goes back to the simple version:
 const parsePDF = async (buffer) => {
   return await pdfParse(buffer);
 };
@@ -29,7 +26,6 @@ const uploadDocument = async (req, res) => {
 
     // ☁️ Upload buffer to Cloudinary
     const uploadResult = await uploadToCloudinary(req.file.buffer);
-
     const fileUrl = uploadResult.secure_url;
     const publicId = uploadResult.public_id;
 
@@ -37,7 +33,6 @@ const uploadDocument = async (req, res) => {
     const data = await parsePDF(req.file.buffer);
     const extractedText = (data.text || "").slice(0, 5000).trim();
 
-    console.log("pdfParse type:", pdfParse);
     if (!extractedText) {
       return res.status(400).json({
         message: "Could not extract text from PDF",
@@ -59,7 +54,7 @@ const uploadDocument = async (req, res) => {
       fileUrl,
       publicId,
       fileSize: req.file.size,
-      uploadedBy: req.user.id,
+      uploadedBy: req.user._id, // ✅ Standardized to _id
       summary,
     });
 
@@ -70,29 +65,28 @@ const uploadDocument = async (req, res) => {
 
   } catch (error) {
     console.error("Upload Error:", error.message);
-
     return res.status(500).json({
       success: false,
       message: error.message,
     });
   }
 };
+
 // ==========================
 // GET ALL DOCUMENTS
 // ==========================
 const getDocuments = async (req, res) => {
   try {
-    const docs = await Document.find().sort({ createdAt: -1 });
+    // ✅ FIXED: Filter by authenticated user's ID
+    const docs = await Document.find({ uploadedBy: req.user._id })
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
       documents: docs,
     });
-
   } catch (error) {
-    return res.status(500).json({
-      message: error.message,
-    });
+    return res.status(500).json({ message: error.message });
   }
 };
 
@@ -102,7 +96,6 @@ const getDocuments = async (req, res) => {
 const deleteDocument = async (req, res) => {
   try {
     const { id } = req.params;
-
     const doc = await Document.findById(id);
 
     if (!doc) {
@@ -111,9 +104,9 @@ const deleteDocument = async (req, res) => {
       });
     }
 
-    // OPTIONAL (recommended security check)
+    // Security check
     if (req.user && doc.uploadedBy) {
-      if (doc.uploadedBy.toString() !== req.user.id) {
+      if (doc.uploadedBy.toString() !== req.user._id.toString()) { // ✅ Standardized to _id
         return res.status(403).json({
           message: "Unauthorized",
         });

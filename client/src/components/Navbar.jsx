@@ -96,7 +96,7 @@ function Navbar() {
                 to="/login"
                 className="text-sm lg:text-base font-semibold text-white bg-black rounded-md px-4 lg:px-5 py-1.5 lg:py-2 transition-all duration-200 hover:opacity-80 hover:scale-105 active:scale-95"
               >
-                Start Free Trial
+                Sign Up
               </Link>
             </div>
 

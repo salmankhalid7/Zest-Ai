@@ -12,19 +12,16 @@ const favoriteRoutes = require("./routes/favoriteRoutes");
 
 require("dotenv").config();
 
-
 connectDB();
 
-
-
 const app = express();
+
 app.use(cors({
-  origin: "http://localhost:5173", // Allows requests from your React client origin
+  origin: "http://localhost:5173", 
   methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true, // Allows handling authorization headers / cookies securely
+  credentials: true, 
 }));
 
-// Ensure body parsers are initialized right after
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -40,7 +37,6 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-
 app.use("/api/favorites", favoriteRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/quiz", quizRoutes);
@@ -49,9 +45,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/auth", require("./routes/googleAuthRoutes"));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/documents", require("./routes/documentRoutes"));
-
 app.use("/api/search", smartSearchRoutes);
-
 
 app.get("/", (req, res) => {
   res.send("API Running...");
