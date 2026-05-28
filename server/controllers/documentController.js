@@ -77,7 +77,6 @@ const uploadDocument = async (req, res) => {
 // ==========================
 const getDocuments = async (req, res) => {
   try {
-    // ✅ FIXED: Filter by authenticated user's ID
     const docs = await Document.find({ uploadedBy: req.user._id })
       .sort({ createdAt: -1 });
 

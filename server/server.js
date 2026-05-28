@@ -36,6 +36,13 @@ app.use(
 
 app.use(passport.initialize());
 app.use(passport.session());
+app.use("/uploads", express.static("uploads", {
+  setHeaders: (res) => {
+    res.set("Access-Control-Allow-Origin", "http://localhost:5173");
+    res.set("Access-Control-Allow-Methods", "GET");
+    res.set("Cross-Origin-Resource-Policy", "cross-origin");
+  }
+}));
 
 app.use("/api/favorites", favoriteRoutes);
 app.use("/api/dashboard", dashboardRoutes);

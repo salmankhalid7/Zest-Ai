@@ -1,21 +1,19 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { 
-  FileText, 
-  BrainCircuit, 
-  Layers, 
-  Target, 
-  Activity, 
-  Clock, 
-  CircleDot 
+import {
+  FileText,
+  BrainCircuit,
+  Layers,
+  Target,
+  Activity,
+  Clock,
+  CircleDot,
 } from "lucide-react";
-import DashboardNav from "../components/DashboardNav";
-import SideBar from "../components/SideBar";
+
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const fetchStats = async () => {
     try {
@@ -24,16 +22,16 @@ const Dashboard = () => {
         setError("Session token not found. Please log in again.");
         return;
       }
-
       const res = await axios.get("http://localhost:5000/api/dashboard", {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       console.log("DASHBOARD RESPONSE:", res.data);
       setStats(res.data.stats);
     } catch (err) {
       console.log("ERROR:", err.response?.data || err.message);
-      setError(err.response?.data?.message || "Failed to sync workspace statistics.");
+      setError(
+        err.response?.data?.message || "Failed to sync workspace statistics."
+      );
     }
   };
 
@@ -44,7 +42,9 @@ const Dashboard = () => {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-white p-4">
-        <p className="text-sm font-bold text-red-600 uppercase tracking-wider mb-2">Workspace Sync Failure</p>
+        <p className="text-sm font-bold text-red-600 uppercase tracking-wider mb-2">
+          Workspace Sync Failure
+        </p>
         <p className="text-xs text-gray-500 font-semibold">{error}</p>
       </div>
     );
@@ -63,30 +63,22 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-white select-none text-black">
-      <SideBar isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed} />
 
-      <div 
-        className={`flex flex-col min-h-screen transition-all duration-300 ease-in-out
-          ${isSidebarCollapsed ? "md:pl-[76px]" : "md:pl-[260px]"}
-        `}
-      >
-        <div className="hidden md:block">
-          <DashboardNav />
-        </div>
 
         <div className="sticky top-0 z-30 h-16 bg-transparent md:hidden pointer-events-none w-full" />
-
+        
         <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6 md:space-y-8 animate-fadeIn">
-          
           <div className="flex items-center gap-3 border-b-2 border-gray-300 pb-4">
-            <Activity size={20} className="text-blue-600 animate-pulse shrink-0" />
+            <Activity
+              size={20}
+              className="text-blue-600 animate-pulse shrink-0"
+            />
             <h2 className="text-lg sm:text-xl font-bold tracking-tight text-gray-900">
               Learning Workspace Overview
             </h2>
           </div>
 
           <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-            
             {/* TOTAL DOCUMENTS */}
             <div className="bg-white border-2 border-gray-300 rounded-xl p-5 hover:border-blue-500 transition-all duration-200 flex flex-col justify-between shadow-sm">
               <div className="flex items-center justify-between mb-4">
@@ -146,14 +138,14 @@ const Dashboard = () => {
                 <p className="text-2xl sm:text-3xl font-black text-emerald-600 tracking-tight">
                   {stats.avgScore}
                 </p>
-                <span className="text-xs sm:text-sm font-bold text-emerald-500">%</span>
+                <span className="text-xs sm:text-sm font-bold text-emerald-500">
+                  %
+                </span>
               </div>
             </div>
-
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
-            
             {/* RECENT DOCUMENTS */}
             <div className="bg-white border-2 border-gray-300 rounded-xl p-4 sm:p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b-2 border-gray-200">
@@ -169,11 +161,14 @@ const Dashboard = () => {
                   </p>
                 ) : (
                   stats.recentDocs.map((doc) => (
-                    <div 
-                      key={doc._id} 
+                    <div
+                      key={doc._id}
                       className="py-3 px-1 text-xs sm:text-sm text-gray-700 hover:text-blue-600 transition-colors flex items-center gap-2.5 font-bold group cursor-pointer"
                     >
-                      <CircleDot size={6} className="text-gray-400 group-hover:text-blue-500 transition-colors shrink-0" />
+                      <CircleDot
+                        size={6}
+                        className="text-gray-400 group-hover:text-blue-500 transition-colors shrink-0"
+                      />
                       <span className="truncate">{doc.title}</span>
                     </div>
                   ))
@@ -198,21 +193,30 @@ const Dashboard = () => {
                   stats.recentQuizzes.map((q) => {
                     const percentage = Math.round((q.score / q.total) * 100);
                     return (
-                      <div key={q._id} className="py-3 px-1 flex items-center justify-between gap-2 text-xs sm:text-sm">
+                      <div
+                        key={q._id}
+                        className="py-3 px-1 flex items-center justify-between gap-2 text-xs sm:text-sm"
+                      >
                         <div className="flex items-center gap-2.5 font-bold text-gray-700 truncate">
-                          <BrainCircuit size={15} className="text-purple-500 shrink-0" />
-                          <span className="truncate">Quiz Session Evaluation</span>
+                          <BrainCircuit
+                            size={15}
+                            className="text-purple-500 shrink-0"
+                          />
+                          <span className="truncate">
+                            Quiz Session Evaluation
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                           <span className="text-[10px] sm:text-[11px] text-gray-500 font-bold">
                             ({q.score}/{q.total} pts)
                           </span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-black tracking-wide border-2
-                            ${percentage >= 70 
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-300" 
-                              : "bg-amber-50 text-amber-700 border-amber-300"
-                            }
-                          `}>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-black tracking-wide border-2 ${
+                              percentage >= 70
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                                : "bg-amber-50 text-amber-700 border-amber-300"
+                            }`}
+                          >
                             {percentage}%
                           </span>
                         </div>
@@ -222,12 +226,9 @@ const Dashboard = () => {
                 )}
               </div>
             </div>
-
           </div>
-
         </main>
       </div>
-    </div>
   );
 };
 

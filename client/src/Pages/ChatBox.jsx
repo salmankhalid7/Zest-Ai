@@ -1,13 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 
 const ChatBox = ({ documentId }) => {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
+  
+  // Create a reference for the scroll area
+  const chatEndRef = useRef(null);
+
+  // Automatically scroll to the bottom whenever messages array or typing state changes
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping]);
 
   const askQuestion = async (e) => {
-    if (e) e.preventDefault(); // Prevents page reload if wrapped in a form
+    if (e) e.preventDefault();
     if (!question.trim() || isTyping) return;
 
     const currentQuestion = question.trim();
@@ -15,19 +23,35 @@ const ChatBox = ({ documentId }) => {
     setIsTyping(true);
 
     try {
-      const res = await axios.post("http://localhost:5000/api/chat/ask", {
-        documentId,
-        question: currentQuestion,
-      });
+      // 1. Pull the token just like your dashboard does
+      const token = localStorage.getItem("token");
+
+      const res = await axios.post(
+        "http://localhost:5000/api/chat/ask",
+        {
+          documentId,
+          question: currentQuestion,
+        },
+        {
+          // 2. Add headers configuration block
+          headers: {
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        }
+      );
 
       setMessages((prev) => [
         ...prev,
         { q: currentQuestion, a: res.data.answer },
       ]);
     } catch (error) {
+      console.error("Chat Error:", error.response?.data || error.message);
       setMessages((prev) => [
         ...prev,
-        { q: currentQuestion, a: "Sorry, I ran into an error processing that request." },
+        { 
+          q: currentQuestion, 
+          a: error.response?.data?.message || "Sorry, I ran into an error processing that request." 
+        },
       ]);
     } finally {
       setIsTyping(false);
@@ -98,6 +122,9 @@ const ChatBox = ({ documentId }) => {
             </div>
           </div>
         )}
+
+        {/* Dummy div to scroll into view */}
+        <div ref={chatEndRef} />
       </div>
 
       {/* INPUT FORM CONTAINER */}
@@ -125,7 +152,6 @@ const ChatBox = ({ documentId }) => {
           </svg>
         </button>
       </form>
-
     </div>
   );
 };

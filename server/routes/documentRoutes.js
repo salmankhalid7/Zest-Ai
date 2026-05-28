@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const upload = require("../middleware/uploadMiddleware");
-const auth = require("../middleware/authMiddleware"); // ✅ FIX ADDED
+const auth = require("../middleware/authMiddleware");
 
 const {
   uploadDocument,
@@ -17,7 +17,7 @@ router.post(
   uploadDocument
 );
 
-// 📄 Get documents (you may also protect this if needed)
+// 📄 Get documents 
 router.get("/", auth, getDocuments);
 
 // 🗑 Delete document (PROTECTED)

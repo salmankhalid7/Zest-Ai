@@ -6,7 +6,8 @@ import { pdfjs } from "react-pdf";
 import Home from "./Pages/Home";
 import Login from "./Pages/Login";
 import Signup from "./Pages/Signup";
-import Dashboard from "./Pages/Dashboard";
+import DashboardLayout from "./layouts/DashboardLayout";
+import Overview from "./Pages/dashboard/Overview";
 import AuthSuccess from "./Pages/AuthSuccess";
 import Flashcards from "./Pages/Flashcards";
 import Quiz from "./Pages/Quiz";
@@ -15,18 +16,22 @@ import ContactUs from "./Pages/ContactUs";
 import About from "./Pages/About";
 import Pricing from "./Pages/Pricing";
 
+import Chat from "./Pages/ChatBox";
+import Documents from "./Pages/Documents";
+import Analytics from "./Pages/Analytics";
+import Profile from "./Pages/Profile";
+import Dashboard from "./Pages/Dashboard";
+
 // Components
 import ProtectedRoute from "./components/ProtectedRoute";
-import { Contact } from "lucide-react";
 
-// PDF worker setup
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 const App = () => {
   return (
     <Router>
       <Routes>
-        {/* ================= PUBLIC ROUTES ================= */}
+
+        {/* PUBLIC ROUTES */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
@@ -35,16 +40,28 @@ const App = () => {
         <Route path="/about" element={<About />} />
         <Route path="/pricing" element={<Pricing />} />
 
-        {/* ================= PROTECTED ROUTES ================= */}
+        {/* DASHBOARD LAYOUT (PROTECTED) */}
         <Route
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <DashboardLayout />
             </ProtectedRoute>
           }
-        />
+        >
+          {/* DEFAULT DASHBOARD PAGE */}
+          <Route index element={<Overview />} />
 
+          {/* SIDEBAR ROUTES */}
+          <Route path="chat" element={<Chat />} />
+          <Route path="documents" element={<Documents />} />
+          <Route path="flashcards" element={<Flashcards />} />
+          <Route path="quizzes" element={<Quiz />} />
+          <Route path="analytics" element={<Analytics />} />
+          <Route path="profile" element={<Profile />} />
+        </Route>
+
+        {/* OUTSIDE DASHBOARD */}
         <Route
           path="/flashcards/:id"
           element={
@@ -71,6 +88,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
       </Routes>
     </Router>
   );
