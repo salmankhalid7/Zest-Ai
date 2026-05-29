@@ -1,273 +1,145 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 
-const Flashcards = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
+const Flashcards = ({ documentId }) => {
+  const [flashcards, setFlashcards] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState("");
+  const [flippedCards, setFlippedCards] = useState({});
 
-  const [flashcardSet, setFlashcardSet] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
-  // UI states for interactive card navigation
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-
+  // ===============================
+  // FETCH EXISTING FLASHCARDS
+  // ===============================
   const fetchFlashcards = async () => {
     try {
-      if (!id || id === "undefined") {
-        setError("No document ID provided in the URL routing path.");
-        setLoading(false);
-        return;
-      }
-
       setLoading(true);
-
-      // ✅ TOKEN GUARD: Check if user is logged in before firing the API request
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setError("You must be logged in to view or generate flashcards.");
-        setLoading(false);
-        return;
-      }
-
-      // ✅ FIXED: Token is attached, and an empty body object {} is passed as the second argument
-      const res = await axios.post(
-        `http://localhost:5000/api/flashcards/${id}`,
-        {}, 
+      const res = await axios.get(
+        `http://localhost:5000/api/flashcards/${documentId}`,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         }
       );
-
-      setFlashcardSet(res.data.flashcards);
-      setLoading(false);
+      setFlashcards(res.data.flashcards?.cards || []);
     } catch (err) {
-      console.error(err.message);
-      setError(err.response?.data?.message || "Flashcard generation failed.");
+      console.log(err);
+    } finally {
       setLoading(false);
     }
+  };
+
+  // ===============================
+  // GENERATE FLASHCARDS
+  // ===============================
+  const generateFlashcards = async () => {
+    try {
+      setGenerating(true);
+      setError("");
+      const res = await axios.post(
+        `http://localhost:5000/api/flashcards/${documentId}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      setFlashcards(res.data.flashcards.cards || []);
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.message || "Failed to generate flashcards.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // ===============================
+  // FLIP CARD
+  // ===============================
+  const toggleFlip = (index) => {
+    setFlippedCards((prev) => ({
+      ...prev,
+      [index]: !prev[index],
+    }));
   };
 
   useEffect(() => {
     fetchFlashcards();
-  }, [id]);
+  }, [documentId]); // Added documentId to dependency array
 
-  // Handle saving favorite card to your database collection
-  const handleSaveFavorite = async (card) => {
-    if (isSaving) return;
-    try {
-      setIsSaving(true);
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        alert("You must be logged in to save favorites.");
-        return;
-      }
-
-      await axios.post(
-        "http://localhost:5000/api/favorites",
-        {
-          type: "flashcard",
-          question: card.question,
-          answer: card.answer,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      alert("⭐ Flashcard added to favorites!");
-    } catch (err) {
-      console.error("Failed to save favorite:", err.message);
-      alert("Could not save card. Make sure you are authenticated.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  if (loading) return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-white flex items-center justify-center">
-      <div className="text-center">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mb-4"></div>
-        <h3 className="text-xl text-green-800">⏳ Generating flashcards with Groq AI...</h3>
-      </div>
-    </div>
-  );
-  
-  if (error) return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-white flex items-center justify-center">
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md shadow-sm">
-        <h3 className="text-xl text-red-600 font-semibold mb-2">Error Encountered</h3>
-        <p className="text-red-700">{error}</p>
-        <button 
-          onClick={() => navigate("/dashboard")}
-          className="mt-4 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition"
-        >
-          Return to Dashboard
-        </button>
-      </div>
-    </div>
-  );
-
-  const cards = flashcardSet?.cards || [];
-  if (cards.length === 0) {
+  // ===============================
+  // LOADING STATE
+  // ===============================
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-white flex items-center justify-center">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 max-w-md text-center shadow-sm">
-          <h3 className="text-xl text-yellow-700 font-medium mb-4">No flashcards found for this document.</h3>
-          <button 
-            onClick={() => navigate("/dashboard")}
-            className="px-4 py-2 bg-yellow-600 text-white text-sm font-medium rounded-md hover:bg-yellow-700 transition"
+      <div className="flex items-center justify-center h-full py-20">
+        <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  // ===============================
+  // EMPTY STATE
+  // ===============================
+  if (flashcards.length === 0) {
+    return (
+      <div className="w-full h-full flex items-center justify-center px-4">
+        <div className="bg-white border border-gray-200 rounded-3xl shadow-sm p-8 md:p-12 max-w-lg w-full text-center">
+          <div className="text-6xl mb-5">🧠</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">Generate AI Flashcards</h2>
+          <p className="text-gray-500 text-sm md:text-base leading-relaxed mb-8">
+            Instantly create smart study flashcards from your document summary.
+          </p>
+          <button
+            onClick={generateFlashcards}
+            disabled={generating}
+            className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-70 text-white px-6 py-3 rounded-2xl font-semibold transition-all shadow-lg w-full md:w-auto"
           >
-            Return to Dashboard
+            {generating ? "Generating..." : "Generate Flashcards"}
           </button>
+          {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
         </div>
       </div>
     );
   }
 
-  const currentCard = cards[currentIndex];
-
-  const handleNext = () => {
-    setIsFlipped(false);
-    setTimeout(() => {
-      setCurrentIndex((prev) => (prev + 1) % cards.length);
-    }, 150);
-  };
-
-  const handlePrev = () => {
-    setIsFlipped(false);
-    setTimeout(() => {
-      setCurrentIndex((prev) => (prev - 1 + cards.length) % cards.length);
-    }, 150);
-  };
-
+  // ===============================
+  // FLASHCARDS UI
+  // ===============================
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-white py-8 px-4">
-      {/* Top Header Row */}
-      <div className="max-w-4xl mx-auto mb-6 flex justify-between items-center">
-        <button 
-          onClick={() => navigate("/dashboard")} 
-          className="px-4 py-2 bg-white text-green-700 rounded-lg border border-green-200 hover:bg-green-50 hover:border-green-300 transition-all duration-200 font-medium flex items-center gap-2 shadow-sm"
+    <div className="w-full max-w-6xl mx-auto p-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10 border-b border-gray-100 pb-6">
+        <div>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Your Flashcards</h1>
+          <p className="text-gray-500 mt-2">Master your material with active recall.</p>
+        </div>
+        <button
+          onClick={generateFlashcards}
+          disabled={generating}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg"
         >
-          <span>←</span> Back to Dashboard
+          {generating ? "Generating..." : "Regenerate Set"}
         </button>
-        <span className="text-green-800 font-medium bg-white px-4 py-2 rounded-lg shadow-sm border border-green-100">
-          Card {currentIndex + 1} of {cards.length}
-        </span>
       </div>
 
-      {/* Card Wrapper with Interactive Action Buttons */}
-      <div className="max-w-3xl mx-auto">
-        <div className="relative" style={{ perspective: "1000px" }}>
-          <div 
-            className="w-full cursor-pointer"
-            onClick={() => setIsFlipped(!isFlipped)}
-          >
-            {/* Flipping card container */}
-            <div 
-              className="relative transition-all duration-500 ease-in-out"
-              style={{
-                transformStyle: "preserve-3d",
-                transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
-              }}
-            >
-              {/* FRONT: QUESTION */}
-              <div 
-                className="w-full bg-white rounded-2xl shadow-xl p-8 backface-hidden"
-                style={{
-                  backfaceVisibility: "hidden",
-                  WebkitBackfaceVisibility: "hidden",
-                }}
-              >
-                <div className="flex justify-between items-start mb-6">
-                  <span className="inline-block px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
-                    QUESTION
-                  </span>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation(); 
-                      handleSaveFavorite(currentCard);
-                    }}
-                    disabled={isSaving}
-                    className="px-3 py-1 text-green-700 border border-green-300 rounded-lg hover:bg-green-50 transition-all duration-200 text-sm font-medium flex items-center gap-1 disabled:opacity-50"
-                  >
-                    <span>⭐</span> Save to Collection
-                  </button>
-                </div>
-                <p className="text-gray-800 text-xl leading-relaxed mb-6 min-h-[200px]">
-                  {currentCard.question}
-                </p>
-                <span className="text-sm text-green-500 block text-center">
-                  Click card to flip and reveal answer
-                </span>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {flashcards.map((card, index) => (
+          <div key={index} className="group h-64 [perspective:1000px]" onClick={() => toggleFlip(index)}>
+            <div className={`relative w-full h-full transition-all duration-500 [transform-style:preserve-3d] cursor-pointer ${flippedCards[index] ? '[transform:rotateY(180deg)]' : ''}`}>
+              <div className="absolute inset-0 bg-white border border-gray-200 rounded-3xl p-8 flex flex-col justify-center items-center text-center shadow-sm [backface-visibility:hidden]">
+                <span className="absolute top-4 left-4 text-[10px] font-bold text-emerald-600 uppercase bg-emerald-50 px-2 py-1 rounded">Question</span>
+                <p className="text-lg font-semibold text-gray-800">{card.question}</p>
               </div>
-
-              {/* BACK: ANSWER */}
-              <div 
-                className="w-full bg-gradient-to-br from-green-700 to-green-800 rounded-2xl shadow-xl p-8 absolute top-0 left-0 backface-hidden"
-                style={{
-                  backfaceVisibility: "hidden",
-                  WebkitBackfaceVisibility: "hidden",
-                  transform: "rotateY(180deg)",
-                }}
-              >
-                <div className="flex justify-between items-start mb-6">
-                  <span className="inline-block px-3 py-1 bg-green-500 text-white rounded-full text-sm font-semibold">
-                    ANSWER
-                  </span>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSaveFavorite(currentCard);
-                    }}
-                    disabled={isSaving}
-                    className="px-3 py-1 text-green-200 border border-green-500 rounded-lg hover:bg-green-600 transition-all duration-200 text-sm font-medium flex items-center gap-1 disabled:opacity-50"
-                  >
-                    <span>⭐</span> Save to Collection
-                  </button>
-                </div>
-                <p className="text-white text-xl leading-relaxed mb-6 min-h-[200px]">
-                  {currentCard.answer}
-                </p>
-                <span className="text-sm text-green-300 block text-center">
-                  Click card to flip back
-                </span>
+              <div className="absolute inset-0 bg-emerald-600 rounded-3xl p-8 flex flex-col justify-center items-center text-center [transform:rotateY(180deg)] [backface-visibility:hidden]">
+                <span className="absolute top-4 left-4 text-[10px] font-bold text-white uppercase bg-emerald-500 px-2 py-1 rounded">Answer</span>
+                <p className="text-lg font-medium text-white">{card.answer}</p>
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Navigation Controls */}
-        <div className="flex justify-center gap-4 mt-8">
-          <button 
-            onClick={handlePrev} 
-            className="px-6 py-2 bg-white text-green-700 rounded-lg border border-green-200 hover:bg-green-50 transition-all duration-200 font-medium shadow-sm"
-          >
-            ◀ Previous
-          </button>
-          <button 
-            onClick={handleNext} 
-            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg"
-          >
-            Next ▶
-          </button>
-        </div>
+        ))}
       </div>
-
-      {/* Add custom CSS for backface visibility */}
-      <style jsx>{`
-        .backface-hidden {
-          backface-visibility: hidden;
-          -webkit-backface-visibility: hidden;
-        }
-      `}</style>
     </div>
   );
 };

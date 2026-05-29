@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import axios from "axios";
 import UploadBox from "../components/UploadBox";
 import DocumentCard from "../components/DocumentCard";
 import { getDocuments } from "../services/documentService";
@@ -11,6 +12,7 @@ const Documents = () => {
     try {
       setIsLoading(true);
       const res = await getDocuments();
+      // Server now returns isFavorite + favoriteId annotated on each doc
       setDocs(res.documents || []);
     } catch (error) {
       console.error(error.message);
@@ -27,25 +29,25 @@ const Documents = () => {
     setDocs((prev) => [newDoc, ...prev]);
   };
 
-  const handleDelete = (id) => {
-    setDocs((prev) => prev.filter((doc) => doc._id !== id));
-  };
-
-  // 🌟 FIX: LOCAL STATE HANDLER FOR FAVORITES
-  const handleToggleFavorite = async (id) => {
-    // 1. Optimistically update local UI state immediately
+  // Called by DocumentCard AFTER the API call succeeds
+  const handleFavoriteChange = (docId, isFavorite, favoriteId) => {
     setDocs((prev) =>
       prev.map((doc) =>
-        doc._id === id ? { ...doc, isFavorite: !doc.isFavorite } : doc
+        doc._id === docId ? { ...doc, isFavorite, favoriteId } : doc
       )
     );
+  };
 
+  // Calls backend, then removes from local state
+  const handleDelete = async (docId) => {
     try {
-      // 2. TODO: If you have a favorite service endpoint, call it here:
-      // await toggleFavoriteDocumentService(id);
-    } catch (error) {
-      console.error("Failed to update favorite status on server:", error);
-      // Optional: Rollback state here if your backend fails
+      const token = localStorage.getItem("token");
+      await axios.delete(`http://localhost:5000/api/documents/${docId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setDocs((prev) => prev.filter((doc) => doc._id !== docId));
+    } catch (err) {
+      console.error("Delete failed:", err.response?.data || err.message);
     }
   };
 
@@ -59,7 +61,6 @@ const Documents = () => {
             Upload and manage your PDF files
           </p>
         </div>
-
         <span className="text-xs font-semibold px-2.5 py-1 bg-green-50 text-green-700 border border-green-100 rounded-full">
           {docs.length} Documents
         </span>
@@ -72,17 +73,15 @@ const Documents = () => {
       {isLoading ? (
         <div className="py-16 text-center text-green-700">Loading...</div>
       ) : docs.length === 0 ? (
-        <div className="py-16 text-center text-gray-500">
-          No documents found
-        </div>
+        <div className="py-16 text-center text-gray-500">No documents found</div>
       ) : (
-        <div className="grid grid-cols-1 gap-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {docs.map((doc) => (
             <DocumentCard
               key={doc._id}
               doc={doc}
               onDelete={handleDelete}
-              onToggleFavorite={handleToggleFavorite} // 🌟 PASSED THE MISSING PROP HERE
+              onFavoriteChange={handleFavoriteChange}
             />
           ))}
         </div>

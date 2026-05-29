@@ -96,8 +96,38 @@ const saveQuizResult = async (req, res) => {
   }
 };
 
+// GET ALL QUIZZES FOR USER
+const getAllQuizzes = async (req, res) => {
+  try {
+    const quizzes = await Quiz.find({ userId: req.user.id })
+      .populate('documentId', 'title') // This helps get the document name
+      .sort({ createdAt: -1 });
+      
+    res.json({ success: true, quizzes });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// GET USER QUIZ HISTORY
+const getQuizHistory = async (req, res) => {
+  try {
+    const attempts = await QuizAttempt.find({ userId: req.user.id })
+      .populate('quizId', 'documentId') // Gets the quiz info
+      .populate('documentId', 'title')  // Gets the title of the document
+      .sort({ createdAt: -1 });         // Most recent first
+
+    res.json({ success: true, attempts });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Don't forget to export it
 module.exports = {
   createQuiz,
   getUserStats,
-  saveQuizResult
+  saveQuizResult,
+  getAllQuizzes,
+  getQuizHistory // Add this here
 };

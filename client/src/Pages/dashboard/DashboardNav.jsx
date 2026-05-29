@@ -7,7 +7,7 @@ function DashboardNav() {
         <span className="text-xs font-medium text-gray-400 tracking-wide uppercase">Workspace</span>
         <span className="text-xs font-bold text-gray-300">/</span>
         <span className="text-xs font-bold text-black tracking-wide bg-gray-50 px-2 py-1 rounded border border-gray-200/60">
-          Learning Analytics
+          Smart Learning
         </span>
       </div>
 

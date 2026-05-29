@@ -9,6 +9,7 @@ const quizRoutes = require("./routes/quizRoutes");
 const smartSearchRoutes = require("./routes/smartSearchRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const favoriteRoutes = require("./routes/favoriteRoutes");
+const userRoutes = require("./routes/userRoutes");
 
 require("dotenv").config();
 
@@ -44,6 +45,8 @@ app.use("/uploads", express.static("uploads", {
   }
 }));
 
+app.use("/api/user", userRoutes);
+app.use("/api/quiz", quizRoutes);
 app.use("/api/favorites", favoriteRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/quiz", quizRoutes);

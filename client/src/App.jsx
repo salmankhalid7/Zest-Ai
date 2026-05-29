@@ -1,36 +1,42 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { pdfjs } from "react-pdf";
 
 // Pages
 import Home from "./Pages/Home";
 import Login from "./Pages/Login";
 import Signup from "./Pages/Signup";
-import DashboardLayout from "./layouts/DashboardLayout";
-import Overview from "./Pages/dashboard/Overview";
 import AuthSuccess from "./Pages/AuthSuccess";
-import Flashcards from "./Pages/Flashcards";
-import Quiz from "./Pages/Quiz";
-import Favorites from "./Pages/Favorites";
 import ContactUs from "./Pages/ContactUs";
 import About from "./Pages/About";
 import Pricing from "./Pages/Pricing";
+import NotFound from "./Pages/NotFound"; // Ensure this component exists
 
-import Chat from "./Pages/ChatBox";
+// Dashboard Components
+import DashboardLayout from "./layouts/DashboardLayout";
+import Overview from "./Pages/dashboard/Overview";
 import Documents from "./Pages/Documents";
+import Favorites from "./Pages/Favorites";
+import AiChatPage from "./Pages/AiChatPage";  // List of all docs to start chat
 import Analytics from "./Pages/Analytics";
 import Profile from "./Pages/Profile";
-import Dashboard from "./Pages/Dashboard";
 
-// Components
+// Interactive Workspace Components
+import DocumentFeature from "./Pages/DocumentFeature"; // Full workspace (includes Quiz/Chat tabs)
+import Flashcards from "./Pages/Flashcards";
+import Quiz from "./Pages/Quiz";              // Active quiz taking view
+import Chat from "./Pages/ChatBox";           // Active chat view
+
+// Helper
 import ProtectedRoute from "./components/ProtectedRoute";
 
+// Configure PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 const App = () => {
   return (
     <Router>
       <Routes>
-
         {/* PUBLIC ROUTES */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
@@ -49,46 +55,34 @@ const App = () => {
             </ProtectedRoute>
           }
         >
-          {/* DEFAULT DASHBOARD PAGE */}
           <Route index element={<Overview />} />
-
-          {/* SIDEBAR ROUTES */}
-          <Route path="chat" element={<Chat />} />
           <Route path="documents" element={<Documents />} />
-          <Route path="flashcards" element={<Flashcards />} />
-          <Route path="quizzes" element={<Quiz />} />
+          <Route path="favorites" element={<Favorites />} />
+          <Route path="ai-chat" element={<AiChatPage />} />
           <Route path="analytics" element={<Analytics />} />
-          <Route path="profile" element={<Profile />} />
+          <Route path="profile" element={<Profile/>} />
         </Route>
 
-        {/* OUTSIDE DASHBOARD */}
+        {/* INTERACTIVE STUDIO WORKSPACES */}
+        <Route
+          path="/document/:id"
+          element={<ProtectedRoute><DocumentFeature /></ProtectedRoute>}
+        />
         <Route
           path="/flashcards/:id"
-          element={
-            <ProtectedRoute>
-              <Flashcards />
-            </ProtectedRoute>
-          }
+          element={<ProtectedRoute><Flashcards /></ProtectedRoute>}
         />
-
         <Route
           path="/quiz/:id"
-          element={
-            <ProtectedRoute>
-              <Quiz />
-            </ProtectedRoute>
-          }
+          element={<ProtectedRoute><Quiz /></ProtectedRoute>}
         />
-
         <Route
-          path="/favorites"
-          element={
-            <ProtectedRoute>
-              <Favorites />
-            </ProtectedRoute>
-          }
+          path="/chat/:id"
+          element={<ProtectedRoute><Chat /></ProtectedRoute>}
         />
 
+        {/* CATCH-ALL */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
   );

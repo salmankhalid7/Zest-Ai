@@ -1,15 +1,53 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 
+import ZestLogo from "../assets/logos/ZestLogo.svg";
+
+const PaperPlaneIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="22" y1="2" x2="11" y2="13" />
+    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+  </svg>
+);
+
+const TypingDots = () => (
+  <div className="flex items-center gap-1">
+    {[0, 1, 2].map((i) => (
+      <span
+        key={i}
+        className="w-1.5 h-1.5 bg-emerald-600 rounded-full animate-bounce"
+        style={{ animationDelay: `${i * 0.15}s` }}
+      />
+    ))}
+  </div>
+);
+
 const ChatBox = ({ documentId }) => {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
-  
-  // Create a reference for the scroll area
-  const chatEndRef = useRef(null);
+  const [initialLoading, setInitialLoading] = useState(true);
 
-  // Automatically scroll to the bottom whenever messages array or typing state changes
+  const chatEndRef = useRef(null);
+  const inputRef = useRef(null);
+  const token = localStorage.getItem("token");
+
+  useEffect(() => {
+    const fetchChatHistory = async () => {
+      try {
+        const res = await axios.get(`http://localhost:5000/api/chat/${documentId}`, {
+          headers: { Authorization: token ? `Bearer ${token}` : "" },
+        });
+        if (res.data.history) setMessages(res.data.history);
+      } catch (error) {
+        console.error("History fetch failure:", error);
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+    if (documentId) fetchChatHistory();
+  }, [documentId, token]);
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
@@ -21,36 +59,21 @@ const ChatBox = ({ documentId }) => {
     const currentQuestion = question.trim();
     setQuestion("");
     setIsTyping(true);
+    inputRef.current?.focus();
 
     try {
-      // 1. Pull the token just like your dashboard does
-      const token = localStorage.getItem("token");
-
       const res = await axios.post(
         "http://localhost:5000/api/chat/ask",
-        {
-          documentId,
-          question: currentQuestion,
-        },
-        {
-          // 2. Add headers configuration block
-          headers: {
-            Authorization: token ? `Bearer ${token}` : "",
-          },
-        }
+        { documentId, question: currentQuestion },
+        { headers: { Authorization: token ? `Bearer ${token}` : "" } }
       );
-
-      setMessages((prev) => [
-        ...prev,
-        { q: currentQuestion, a: res.data.answer },
-      ]);
+      setMessages((prev) => [...prev, { q: currentQuestion, a: res.data.answer }]);
     } catch (error) {
-      console.error("Chat Error:", error.response?.data || error.message);
       setMessages((prev) => [
         ...prev,
-        { 
-          q: currentQuestion, 
-          a: error.response?.data?.message || "Sorry, I ran into an error processing that request." 
+        {
+          q: currentQuestion,
+          a: error.response?.data?.message || "Sorry, something went wrong. Please try again.",
         },
       ]);
     } finally {
@@ -58,101 +81,133 @@ const ChatBox = ({ documentId }) => {
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      askQuestion();
+    }
+  };
+
+  const suggestions = [
+    "Summarize this document",
+    "What are the key points?",
+    "Explain the main topic",
+  ];
+
   return (
-    <div className="mt-6 bg-white border border-green-100 rounded-xl shadow-sm flex flex-col overflow-hidden h-[500px] max-w-2xl mx-auto">
-      
-      {/* CHAT HEADER */}
-      <div className="bg-green-50/50 border-b border-green-100 px-5 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <h3 className="text-sm font-bold text-green-900 tracking-wide">
-            Chat with PDF
-          </h3>
-        </div>
-        <span className="text-xs text-green-700 bg-green-100/60 px-2 py-0.5 rounded font-medium">
-          AI Engine Active
-        </span>
-      </div>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;600&display=swap');
+        @keyframes chatFadeUp {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .chat-msg { animation: chatFadeUp 0.25s ease forwards; }
+      `}</style>
 
-      {/* CHAT STREAM AREA */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-gray-50/30">
-        {messages.length === 0 && !isTyping && (
-          <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2">
-            <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600">
-              💡
+      <div className="font-['Geist'] h-full w-full bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm flex flex-col">
+
+
+        {/* MESSAGES AREA */}
+        <div className="flex-1 overflow-y-auto p-6 bg-gray-50 space-y-6">
+          {initialLoading ? (
+            <div className="h-full flex items-center justify-center gap-3 text-gray-500">
+              <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+              Loading history...
             </div>
-            <p className="text-sm font-medium text-gray-700">No questions yet</p>
-            <p className="text-xs text-gray-400 max-w-[240px]">
-              Ask anything about the document above to extract immediate answers or translations.
-            </p>
-          </div>
-        )}
+          ) : messages.length === 0 && !isTyping ? (
+            /* EMPTY STATE */
+            <div className="h-full flex flex-col items-center justify-center gap-8 text-center">
+              <div className="w-20 h-20 bg-emerald-50 rounded-2xl flex items-center justify-center">
+                <img src={ZestLogo} alt="Zest Logo" className="w-10 h-10" />
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-gray-900 mb-2">
+                  Ask anything about this document
+                </p>
+                <p className="text-sm text-gray-500 max-w-sm">
+                  Get instant answers, summaries, explanations, and more.
+                </p>
+              </div>
 
-        {messages.map((m, i) => (
-          <div key={i} className="space-y-3 animate-fadeIn">
-            {/* USER MESSAGE BUBBLE */}
-            <div className="flex justify-end">
-              <div className="bg-gray-800 text-white text-sm px-4 py-2 rounded-2xl rounded-tr-none max-w-[85%] shadow-sm">
-                {m.q}
+              <div className="flex flex-wrap gap-2 justify-center">
+                {suggestions.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => { setQuestion(s); inputRef.current?.focus(); }}
+                    className="bg-white border border-gray-200 hover:border-emerald-200 hover:text-emerald-700 text-gray-600 px-5 py-2.5 rounded-2xl text-sm font-medium transition-all"
+                  >
+                    {s}
+                  </button>
+                ))}
               </div>
             </div>
+          ) : (
+            /* MESSAGES */
+            <div className="space-y-7">
+              {messages.map((m, i) => (
+                <div key={i} className="chat-msg">
+                  {/* User Message */}
+                  <div className="flex justify-end mb-3">
+                    <div className="bg-gray-900 text-white px-5 py-3 rounded-3xl rounded-br-md max-w-[80%] text-[15px]">
+                      {m.q}
+                    </div>
+                  </div>
 
-            {/* AI RESPONSE BUBBLE */}
-            <div className="flex justify-start">
-              <div className="bg-white border border-green-100 text-gray-700 text-sm p-4 rounded-2xl rounded-tl-none max-w-[85%] shadow-sm space-y-1">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-green-700 mb-0.5">
-                  Zest Assistant
+{/* AI Message with Green Theme */}
+<div className="flex gap-3">
+  <div className="w-8 h-8 bg-emerald-100 rounded-2xl flex items-center justify-center flex-shrink-0 mt-0.5">
+    <img src={ZestLogo} alt="Zest Logo" className="w-5 h-5" />
+  </div>
+  <div className="bg-[#e6fff2] border border-emerald-100 px-5 py-3 rounded-3xl rounded-bl-md max-w-[80%] text-[15px] leading-relaxed text-emerald-950">
+    {m.a}
+  </div>
+</div>
                 </div>
-                <p className="leading-relaxed">{m.a}</p>
-              </div>
-            </div>
-          </div>
-        ))}
+              ))}
 
-        {/* LOADING INDICATOR BUBBLE */}
-        {isTyping && (
-          <div className="flex justify-start animate-pulse">
-            <div className="bg-green-50/60 border border-green-100/50 text-gray-500 text-xs px-4 py-2.5 rounded-2xl rounded-tl-none flex items-center gap-2">
-              <div className="flex gap-1">
-                <span className="w-1.5 h-1.5 bg-green-600 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                <span className="w-1.5 h-1.5 bg-green-600 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                <span className="w-1.5 h-1.5 bg-green-600 rounded-full animate-bounce" />
-              </div>
-              <span className="text-green-800 font-medium">Reading pages...</span>
+              {isTyping && (
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 bg-emerald-50 rounded-2xl flex items-center justify-center flex-shrink-0">
+                    <img src={ZestLogo} alt="Zest Logo" className="w-5 h-5" />
+                  </div>
+                  <div className="bg-white border border-gray-200 px-5 py-3 rounded-3xl rounded-bl-md">
+                    <TypingDots />
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Dummy div to scroll into view */}
-        <div ref={chatEndRef} />
+        {/* INPUT BAR */}
+        <div className="p-5 border-t border-gray-100 bg-white flex-shrink-0">
+          <div className="flex gap-2 bg-gray-50 border border-gray-200 rounded-2xl p-2 focus-within:border-emerald-500 transition-colors">
+            <input
+              ref={inputRef}
+              type="text"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={isTyping}
+              placeholder={isTyping ? "Generating response..." : "Ask a question about this document..."}
+              className="flex-1 bg-transparent px-4 py-3 outline-none text-[15px] placeholder-gray-400"
+            />
+            <button
+              onClick={askQuestion}
+              disabled={!question.trim() || isTyping}
+              className="w-11 h-11 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white rounded-xl flex items-center justify-center transition-colors"
+            >
+              <PaperPlaneIcon />
+            </button>
+          </div>
+          <p className="text-center text-[10px] text-gray-400 mt-3">
+            AI can make mistakes · Always verify important information
+          </p>
+        </div>
       </div>
-
-      {/* INPUT FORM CONTAINER */}
-      <form 
-        onSubmit={askQuestion} 
-        className="p-4 bg-white border-t border-gray-100 flex items-center gap-2.5"
-      >
-        <input
-          type="text"
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          disabled={isTyping}
-          placeholder={isTyping ? "Waiting for response..." : "Ask a question about this file..."}
-          className="flex-1 bg-gray-50 border border-gray-200 focus:border-green-400 focus:bg-white focus:ring-4 focus:ring-green-400/10 rounded-xl px-4 py-2.5 text-sm outline-none transition-all placeholder:text-gray-400 disabled:opacity-60"
-        />
-
-        <button 
-          type="submit"
-          disabled={!question.trim() || isTyping}
-          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-100 text-white disabled:text-gray-400 font-medium px-4 py-2.5 rounded-xl text-sm transition-colors shrink-0 flex items-center justify-center gap-1.5"
-        >
-          <span>Send</span>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-            <path d="M3.105 2.289a.75.75 0 00-.826.95l1.414 4.925a1.5 1.5 0 001.18 1.063l6.507 1.354a.25.25 0 010 .484l-6.507 1.354a1.5 1.5 0 00-1.18 1.062l-1.414 4.926a.75.75 0 00.826.95 24.921 24.921 0 0016.482-7.348.75.75 0 000-1.062 24.92 24.92 0 00-16.482-7.348z" />
-          </svg>
-        </button>
-      </form>
-    </div>
+    </>
   );
 };
 

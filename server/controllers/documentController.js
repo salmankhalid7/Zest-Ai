@@ -4,6 +4,8 @@ const generateSummary = require("../utils/aiSummary");
 const cloudinary = require("../config/cloudinary");
 const uploadToCloudinary = require("../utils/uploadToCloudinary");
 const pdfParse = require("pdf-parse-fork");
+const chunkText = require("../utils/chunkText"); // 🔌 Import your chunking utility
+const Favorite = require("../models/Favorite");
 
 const parsePDF = async (buffer) => {
   return await pdfParse(buffer);
@@ -31,31 +33,36 @@ const uploadDocument = async (req, res) => {
 
     // 📄 Extract PDF text directly from buffer
     const data = await parsePDF(req.file.buffer);
-    const extractedText = (data.text || "").slice(0, 5000).trim();
+    const fullText = (data.text || "").trim();
 
-    if (!extractedText) {
+    if (!fullText) {
       return res.status(400).json({
-        message: "Could not extract text from PDF",
+        message: "Could not extract text from PDF file structure.",
       });
     }
 
-    // 🤖 AI summary safe mode
+    // 🍕 Generate clean, word-safe chunks from the FULL text stream
+    const chunks = chunkText(fullText, 1000);
+
+    // 🤖 AI summary safe mode (Pass up to ~15,000 chars to avoid model overflow)
     let summary = "";
     try {
-      summary = await generateSummary(extractedText);
+      const summaryInputText = fullText.slice(0, 15000);
+      summary = await generateSummary(summaryInputText);
     } catch (err) {
-      console.error("AI Error:", err.message);
-      summary = "Summary not available";
+      console.error("AI Summary generation failed:", err.message);
+      summary = "Summary generation unavailable at this moment.";
     }
 
-    // 💾 Save to DB
+    // 💾 Save to DB with chunks populated correctly!
     const doc = await Document.create({
       title: req.file.originalname,
       fileUrl,
       publicId,
       fileSize: req.file.size,
-      uploadedBy: req.user._id, // ✅ Standardized to _id
+      uploadedBy: req.user._id,
       summary,
+      chunks, // ✅ Core dataset mapping restored
     });
 
     return res.status(201).json({
@@ -77,18 +84,32 @@ const uploadDocument = async (req, res) => {
 // ==========================
 const getDocuments = async (req, res) => {
   try {
-    const docs = await Document.find({ uploadedBy: req.user._id })
-      .sort({ createdAt: -1 });
+    const userId = req.user._id;
 
-    return res.status(200).json({
-      success: true,
-      documents: docs,
+    const [docs, userFavorites] = await Promise.all([
+      Document.find({ uploadedBy: userId }).sort({ createdAt: -1 }),
+      Favorite.find({ userId }),
+    ]);
+
+    // Build a lookup map: documentId string → favorite _id string
+    const favMap = {};
+    userFavorites.forEach((fav) => {
+      favMap[fav.documentId.toString()] = fav._id.toString();
     });
+
+    const annotated = docs.map((doc) => {
+      const plain = doc.toObject();
+      const favId = favMap[plain._id.toString()];
+      plain.isFavorite = !!favId;
+      plain.favoriteId = favId || null;
+      return plain;
+    });
+
+    return res.status(200).json({ success: true, documents: annotated });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 };
-
 // ==========================
 // DELETE DOCUMENT
 // ==========================
@@ -98,38 +119,62 @@ const deleteDocument = async (req, res) => {
     const doc = await Document.findById(id);
 
     if (!doc) {
-      return res.status(404).json({
-        message: "Document not found",
-      });
+      return res.status(404).json({ message: "Document not found" });
     }
 
-    // Security check
-    if (req.user && doc.uploadedBy) {
-      if (doc.uploadedBy.toString() !== req.user._id.toString()) { // ✅ Standardized to _id
-        return res.status(403).json({
-          message: "Unauthorized",
-        });
-      }
+    if (doc.uploadedBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Unauthorized" });
     }
 
     // Delete from Cloudinary
     if (doc.publicId) {
-      await cloudinary.uploader.destroy(doc.publicId, {
-        resource_type: "raw",
-      });
+      await cloudinary.uploader.destroy(doc.publicId, { resource_type: "raw" });
     }
+
+    // Cascade delete: remove all favorites pointing to this document
+    await Favorite.deleteMany({ documentId: id });
 
     // Delete from MongoDB
     await Document.findByIdAndDelete(id);
 
+    return res.status(200).json({ success: true, message: "Document deleted successfully" });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// ==========================
+// GET SINGLE DOCUMENT BY ID
+// ==========================
+const getDocumentById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const doc = await Document.findById(id);
+
+    if (!doc) {
+      return res.status(404).json({
+        success: false,
+        message: "Document not found inside database.",
+      });
+    }
+
+    if (doc.uploadedBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized access to this document.",
+      });
+    }
+
     return res.status(200).json({
       success: true,
-      message: "Document deleted successfully",
+      document: doc,
     });
-
   } catch (error) {
-    return res.status(500).json({
-      message: error.message,
+    console.error("Get Single Document Error:", error.message);
+    return res.status(500).json({ 
+      success: false,
+      message: error.message 
     });
   }
 };
@@ -138,4 +183,5 @@ module.exports = {
   uploadDocument,
   getDocuments,
   deleteDocument,
+  getDocumentById, 
 };

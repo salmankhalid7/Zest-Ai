@@ -1,100 +1,219 @@
-import React, { useState } from "react";
-import {
-  LayoutDashboard,
-  MessageSquare,
-  FileText,
-  Layers,
-  PenTool,
-  History,
-  BarChart3,
-  Settings,
-  User,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  Menu,
-  X,
-  Bookmark,
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { 
+  LayoutDashboard, FileText, BarChart3, User, LogOut, 
+  ChevronLeft, ChevronRight, Menu, X, Bookmark, 
+  MessageSquare 
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-
 import ZestLogo from "../../assets/logos/ZestLogo.svg";
 
 const SideBar = ({ isCollapsed, setIsCollapsed }) => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-
+  const [user, setUser] = useState(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  
   const navigate = useNavigate();
   const location = useLocation();
 
+  const token = localStorage.getItem("token");
+
+  // Fetch user data
+  useEffect(() => {
+    const fetchUser = async () => {
+      if (!token) return;
+      
+      try {
+        const res = await axios.get("http://localhost:5000/api/user/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        setUser(res.data);
+      } catch (err) {
+        console.error("Failed to load user", err);
+        // If token is invalid, clear it and redirect to login
+        if (err.response?.status === 401) {
+          handleLogout(true); // Silent logout
+        }
+      }
+    };
+
+    fetchUser();
+  }, [token]);
+
+  // Close mobile menu when window is resized to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setIsMobileOpen(false);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Handle logout
+  const handleLogout = async (silent = false) => {
+    if (!silent) {
+      setIsLoggingOut(true);
+    }
+    
+    try {
+      // Call logout API if your backend has one
+      if (token && !silent) {
+        await axios.post(
+          "http://localhost:5000/api/auth/logout",
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+      }
+    } catch (err) {
+      console.error("Logout API error:", err);
+    } finally {
+      // Clear local storage
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      
+      // Clear any other stored data
+      sessionStorage.clear();
+      
+      // Redirect to login page
+      navigate("/login", { replace: true });
+      
+      if (!silent) {
+        setIsLoggingOut(false);
+      }
+      setShowLogoutConfirm(false);
+    }
+  };
+
   const navItems = [
-    { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-    { name: "AI Chat", icon: MessageSquare, path: "/dashboard/chat" },
-    { name: "Documents", icon: FileText, path: "/dashboard/documents" },
-    { name: "Flashcards", icon: Layers, path: "/dashboard/flashcards" },
-    { name: "Quizzes", icon: PenTool, path: "/dashboard/quizzes" },
-    { name: "Favorites", icon: Bookmark, path: "/favorites" },
-    { name: "History", icon: History, path: "/dashboard/history" },
-    { name: "Analytics", icon: BarChart3, path: "/dashboard/analytics" },
-    { name: "Settings", icon: Settings, path: "/dashboard/settings" },
-    { name: "Profile", icon: User, path: "/dashboard/profile" },
+    { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard", exact: true },
+    { name: "Documents", icon: FileText, path: "/dashboard/documents", exact: false },
+    { name: "Favorites", icon: Bookmark, path: "/dashboard/favorites", exact: false },
+    { name: "AI Chat", icon: MessageSquare, path: "/dashboard/ai-chat", exact: false },
+    { name: "Analytics", icon: BarChart3, path: "/dashboard/analytics", exact: false },
+    { name: "Profile", icon: User, path: "/dashboard/profile", exact: false },
   ];
 
-  const toggleSidebar = () => setIsCollapsed(!isCollapsed);
-  const toggleMobile = () => setIsMobileOpen(!isMobileOpen);
+  const isActiveRoute = (item) => {
+    if (item.exact) {
+      return location.pathname === item.path;
+    }
+    return location.pathname.startsWith(item.path);
+  };
 
-  const activePath = location.pathname;
+  // Get first character of user name
+  const getUserFirstChar = () => {
+    if (!user?.name) return "U";
+    return user.name.charAt(0).toUpperCase();
+  };
 
   return (
     <>
-      {/* MOBILE BUTTON */}
-      <button
-        onClick={toggleMobile}
-        className="md:hidden fixed top-5 left-4 z-50 p-2.5 rounded-xl bg-white border border-gray-200 shadow-sm"
+      {/* Mobile menu button */}
+      <button 
+        onClick={() => setIsMobileOpen(!isMobileOpen)} 
+        className="md:hidden fixed top-5 left-4 z-50 p-2.5 rounded-xl bg-white border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors"
       >
-        {isMobileOpen ? <X size={16} /> : <Menu size={16} />}
+        {isMobileOpen ? <X size={18} /> : <Menu size={18} />}
       </button>
 
-      {/* BACKDROP */}
+      {/* Backdrop for mobile */}
       {isMobileOpen && (
-        <div
-          onClick={toggleMobile}
-          className="md:hidden fixed inset-0 z-40 bg-black/10 backdrop-blur-sm"
+        <div 
+          onClick={() => setIsMobileOpen(false)} 
+          className="md:hidden fixed inset-0 z-40 bg-black/20 backdrop-blur-sm transition-opacity duration-300"
         />
       )}
 
-      {/* SIDEBAR */}
-      <aside
-        className={`fixed top-0 left-0 h-screen bg-white border-r border-gray-100 flex flex-col justify-between z-40
-        transition-all duration-300
-        ${isCollapsed ? "w-[76px]" : "w-[260px]"}
-        ${isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
-      `}
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <LogOut size={24} className="text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Logout</h3>
+                <p className="text-sm text-gray-500">Are you sure you want to logout?</p>
+              </div>
+            </div>
+            
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6">
+              <p className="text-xs text-amber-800">
+                You will need to login again to access your account and documents.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleLogout(false)}
+                disabled={isLoggingOut}
+                className="flex-1 px-4 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isLoggingOut ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Logging out...
+                  </>
+                ) : (
+                  <>
+                    <LogOut size={16} />
+                    Logout
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sidebar */}
+      <aside 
+        className={`fixed top-0 left-0 h-screen bg-white border-r border-gray-200 flex flex-col justify-between z-40 transition-all duration-300 ease-in-out
+          ${isCollapsed ? "w-[76px]" : "w-[260px]"} 
+          ${isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+          shadow-lg md:shadow-none
+        `}
       >
-        {/* TOGGLE BUTTON */}
-        <button
-          onClick={toggleSidebar}
-          className="hidden md:flex absolute top-7 -right-3 w-6 h-6 rounded-full border bg-white items-center justify-center shadow-sm"
+        {/* Collapse toggle button - desktop only */}
+        <button 
+          onClick={() => setIsCollapsed(!isCollapsed)} 
+          className="hidden md:flex absolute -right-3 top-7 w-6 h-6 rounded-full border border-gray-200 bg-white items-center justify-center shadow-md hover:shadow-lg transition-all z-50 hover:bg-gray-50"
         >
           {isCollapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
         </button>
 
-        {/* LOGO */}
-        <div className="p-5 flex items-center gap-3 border-b h-20">
-          <img src={ZestLogo} alt="logo" className="w-8 h-8" />
-
+        {/* Logo section */}
+        <div className={`p-5 flex items-center gap-3 border-b border-gray-100 h-20 ${isCollapsed ? "justify-center" : ""}`}>
+          <img src={ZestLogo} alt="Zest AI Logo" className="w-8 h-8 flex-shrink-0" />
           {!isCollapsed && (
-            <div>
-              <h1 className="text-sm font-black">ZEST AI</h1>
+            <div className="overflow-hidden">
+              <h1 className="text-sm font-black tracking-tight">ZEST AI</h1>
               <p className="text-[10px] text-gray-400">Learning Suite</p>
             </div>
           )}
         </div>
 
-        {/* NAV ITEMS */}
-        <div className="flex-1 overflow-y-auto py-6 px-3 space-y-1.5">
+        {/* Navigation items */}
+        <div className="flex-1 py-6 px-3 space-y-1.5 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = activePath === item.path;
+            const isActive = isActiveRoute(item);
 
             return (
               <button
@@ -103,41 +222,67 @@ const SideBar = ({ isCollapsed, setIsCollapsed }) => {
                   navigate(item.path);
                   setIsMobileOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-bold transition
-                  ${
-                    isActive
-                      ? "bg-black text-white"
-                      : "text-gray-500 hover:bg-gray-50 hover:text-black"
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200
+                  ${isActive 
+                    ? "bg-black text-white shadow-md" 
+                    : "text-gray-600 hover:bg-gray-50 hover:text-black"
                   }
+                  ${isCollapsed ? "justify-center" : ""}
                 `}
+                title={isCollapsed ? item.name : ""}
               >
-                <Icon size={18} />
-
-                {!isCollapsed && <span>{item.name}</span>}
+                <Icon size={18} className="flex-shrink-0" />
+                {!isCollapsed && <span className="truncate">{item.name}</span>}
               </button>
             );
           })}
         </div>
 
-        {/* USER SECTION */}
-        <div className="p-3 border-t">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center text-xs font-bold">
-                S
+        {/* User section with logout button together */}
+        <div className="border-t border-gray-100 p-3">
+          <div className={`flex items-center gap-2 ${isCollapsed ? "flex-col" : ""}`}>
+            {/* Profile button */}
+            <button 
+              onClick={() => {
+                navigate("/dashboard/profile");
+                setIsMobileOpen(false);
+              }}
+              className={`flex items-center gap-2 transition-all duration-200 hover:bg-gray-50 rounded-lg p-2 flex-1
+                ${isCollapsed ? "justify-center w-full" : ""}
+              `}
+            >
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-800 to-black text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                {getUserFirstChar()}
               </div>
-
-              {!isCollapsed && (
-                <div>
-                  <p className="text-xs font-bold">Salman</p>
-                  <p className="text-[10px] text-gray-400">salman@zest.ai</p>
+              
+              {!isCollapsed && user && (
+                <div className="text-left overflow-hidden flex-1">
+                  <p className="text-xs font-bold truncate">
+                    {user.name || "User"}
+                  </p>
+                  <p className="text-[10px] text-gray-400 truncate">
+                    {user.email || "user@example.com"}
+                  </p>
                 </div>
               )}
-            </div>
+            </button>
 
-            {!isCollapsed && (
-              <button className="text-gray-400 hover:text-red-500">
-                <LogOut size={14} />
+            {/* Logout button - right next to profile */}
+            {!isCollapsed ? (
+              <button
+                onClick={() => setShowLogoutConfirm(true)}
+                className="p-2 rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 transition-all duration-200 flex-shrink-0"
+                title="Logout"
+              >
+                <LogOut size={18} />
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowLogoutConfirm(true)}
+                className="w-full p-2 rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 transition-all duration-200 flex items-center justify-center mt-1"
+                title="Logout"
+              >
+                <LogOut size={18} />
               </button>
             )}
           </div>

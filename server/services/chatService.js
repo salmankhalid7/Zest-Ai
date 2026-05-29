@@ -24,8 +24,9 @@ const askAIAboutPDF = async (chunks, question) => {
       return "AI configuration error.";
     }
 
-    // 2. Safely isolate the top 3 contextual text chunks
-    const context = chunks.slice(0, 3).join("\n\n");
+    // 2. Format context string out of received relevant chunks 
+    // (Note: Selection/slicing is now handled dynamically in the chat controller)
+    const context = chunks.join("\n\n");
 
     // 3. Trigger the Groq chat completion request
     const response = await client.chat.completions.create({
@@ -38,9 +39,10 @@ const askAIAboutPDF = async (chunks, question) => {
 You are a highly precise PDF document assistant. 
 
 CRITICAL DIRECTIVES:
-- Answer the question using ONLY the provided text context chunks.
-- Keep your answers clean, direct, and academic.
-- If the answer cannot be confidently found within the context chunks below, you must reply EXACTLY with: "Not found in document."
+- Answer the question using the provided text context chunks.
+- If the user asks for a summary, main idea, overview, or what the document is about, use the provided context chunks to synthesize a clear, comprehensive response.
+- Keep your answers clean, direct, and academic. Do not bring in outside knowledge.
+- If the answer completely contradicts or cannot be reasonably inferred or found within the context chunks below, you must reply EXACTLY with: "Not found in document."
           `,
         },
         {

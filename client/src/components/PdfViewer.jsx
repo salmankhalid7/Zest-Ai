@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 
-import "react-pdf/dist/Page/AnnotationLayer.css";
-import "react-pdf/dist/Page/TextLayer.css";
+import "react-pdf/dist/esm/Page/AnnotationLayer.css";
+import "react-pdf/dist/esm/Page/TextLayer.css";
+import worker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-// 🌐 Dynamically matches the version over stable CDN
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.mjs`;
+pdfjs.GlobalWorkerOptions.workerSrc = worker;
 
 const PdfViewer = ({ file }) => {
   const [numPages, setNumPages] = useState(null);
@@ -13,149 +13,165 @@ const PdfViewer = ({ file }) => {
   const [scale, setScale] = useState(1.0);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRendering, setIsRendering] = useState(false);
 
   useEffect(() => {
-    // Reset states when file changes
     setPageNumber(1);
     setError(null);
     setIsLoading(true);
   }, [file]);
 
-  function onDocumentLoadSuccess({ numPages }) {
-    setNumPages(numPages);
-    setError(null);
-    setIsLoading(false);
-  }
-
-  function onDocumentLoadError(err) {
-    console.error("PDF Load Error:", err);
-    setError("Failed to render this document. Please check the file format.");
-    setIsLoading(false);
-  }
-
   const options = useMemo(() => ({
-    withCredentials: false
+    cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
+    cMapPacked: true,
   }), []);
 
-  // Zoom control logic
-  const zoomIn = () => setScale((s) => Math.min(s + 0.2, 2.0));
-  const zoomOut = () => setScale((s) => Math.max(s - 0.2, 0.6));
+  const onDocumentLoadSuccess = ({ numPages }) => {
+    setNumPages(numPages);
+    setIsLoading(false);
+  };
 
-  if (!file) {
-    return (
-      <div className="flex flex-col items-center justify-center p-12 text-center bg-gray-50 border border-dashed border-gray-200 rounded-xl h-full">
-        <p className="text-sm font-medium text-gray-500">No PDF file specified or URL is empty.</p>
-      </div>
-    );
-  }
+  const onDocumentLoadError = (err) => {
+    console.error("PDF Load Error:", err);
+    setError(err.message || "Failed to load PDF. Please check the file URL or CORS settings.");
+    setIsLoading(false);
+  };
+
+  const zoomIn = () => setScale(s => Math.min(s + 0.15, 2.5));
+  const zoomOut = () => setScale(s => Math.max(s - 0.15, 0.5));
+  const fitToWidth = () => setScale(1.2);
+  const fitToPage = () => setScale(1.0);
+
+  const goToPrevPage = () => {
+    setIsRendering(true);
+    setPageNumber(p => Math.max(p - 1, 1));
+  };
+
+  const goToNextPage = () => {
+    setIsRendering(true);
+    setPageNumber(p => Math.min(p + 1, numPages || 1));
+  };
 
   return (
-    <div className="flex flex-col h-full bg-gray-900/5 rounded-xl border border-gray-200/80 overflow-hidden shadow-inner">
-      
-      {/* 🛠️ PREMIUM TOOLBAR */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-gray-200/80 sticky top-0 z-10 backdrop-blur-md bg-white/95">
-        
-        {/* Pagination Controls */}
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setPageNumber((p) => Math.max(p - 1, 1))}
-            disabled={pageNumber <= 1 || isLoading}
-            className="p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-            title="Previous Page"
-          >
-            ⬅️
-          </button>
-          
-          <span className="text-xs font-medium text-gray-600 select-none px-1">
-            {numPages ? `${pageNumber} / ${numPages}` : "— / —"}
-          </span>
+    <div className="flex flex-col h-full bg-gray-50 rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+      {/* Modern Toolbar */}
+      <div className="bg-white border-b border-gray-200 px-5 py-3 flex items-center justify-between sticky top-0 z-20">
+        <div className="flex items-center gap-4">
+          {/* Page Navigation */}
+          <div className="flex items-center bg-gray-100 rounded-xl px-2 py-1">
+            <button
+              onClick={goToPrevPage}
+              disabled={pageNumber <= 1 || isLoading}
+              className="p-2 hover:bg-white rounded-lg transition-all disabled:opacity-40"
+              title="Previous Page"
+            >
+              ←
+            </button>
+            
+            <div className="px-4 text-sm font-medium text-gray-700 min-w-[80px] text-center">
+              {numPages ? `${pageNumber} of ${numPages}` : "—"}
+            </div>
 
-          <button
-            onClick={() => setPageNumber((p) => Math.min(p + 1, numPages || 1))}
-            disabled={pageNumber >= (numPages || 1) || isLoading}
-            className="p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-            title="Next Page"
-          >
-            ➡️
-          </button>
+            <button
+              onClick={goToNextPage}
+              disabled={pageNumber >= (numPages || 1) || isLoading}
+              className="p-2 hover:bg-white rounded-lg transition-all disabled:opacity-40"
+              title="Next Page"
+            >
+              →
+            </button>
+          </div>
+
+          {/* Zoom Controls */}
+          <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+            <button onClick={zoomOut} className="p-2 hover:bg-white rounded-lg transition-all text-lg" title="Zoom Out">−</button>
+            <span className="px-3 text-sm font-semibold text-gray-700 min-w-[52px] text-center">
+              {Math.round(scale * 100)}%
+            </span>
+            <button onClick={zoomIn} className="p-2 hover:bg-white rounded-lg transition-all text-lg" title="Zoom In">＋</button>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={fitToWidth}
+              className="px-3 py-1.5 text-xs font-medium bg-white border border-gray-200 hover:border-gray-300 rounded-lg transition-all"
+            >
+              Fit Width
+            </button>
+            <button
+              onClick={fitToPage}
+              className="px-3 py-1.5 text-xs font-medium bg-white border border-gray-200 hover:border-gray-300 rounded-lg transition-all"
+            >
+              Fit Page
+            </button>
+          </div>
         </div>
 
-        {/* Zoom Controls */}
-        <div className="flex items-center gap-1">
-          <button
-            onClick={zoomOut}
-            disabled={scale <= 0.6 || isLoading}
-            className="p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-lg disabled:opacity-30 transition-all text-xs font-bold"
-            title="Zoom Out"
-          >
-            ➖
-          </button>
-          <span className="text-xs font-semibold text-gray-600 select-none min-w-[45px] text-center">
-            {Math.round(scale * 100)}%
-          </span>
-          <button
-            onClick={zoomIn}
-            disabled={scale >= 2.0 || isLoading}
-            className="p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-lg disabled:opacity-30 transition-all text-xs font-bold"
-            title="Zoom In"
-          >
-            ➕
-          </button>
-        </div>
-
-        {/* Download / Outbound link */}
-        <div>
+        {/* Right Side */}
+        <div className="flex items-center gap-3">
           <a
             href={file}
             target="_blank"
             rel="noreferrer"
-            className="text-xs font-semibold text-gray-600 hover:text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-50 transition-all flex items-center gap-1.5"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
           >
-            📥 Download
+            <span>↓</span>
+            Download
           </a>
         </div>
       </div>
 
-      {/* 📄 PDF RENDER CANVAS WORKSPACE */}
-      <div className="flex-1 overflow-y-auto overflow-x-auto p-6 bg-gray-100/60 flex items-start justify-center min-h-0 relative">
-        
-        {/* Loading Spinner Overlays */}
+      {/* PDF Viewer Area */}
+      <div className="flex-1 overflow-auto p-8 bg-gray-100 flex items-start justify-center relative">
         {isLoading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50/80 backdrop-blur-sm z-20 transition-opacity duration-300">
-            <div className="w-8 h-8 border-3 border-green-600 border-t-transparent rounded-full animate-spin mb-3"></div>
-            <p className="text-xs font-semibold text-gray-500 tracking-wide uppercase animate-pulse">
-              Parsing Document...
-            </p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 backdrop-blur-sm z-30">
+            <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mb-4" />
+            <p className="text-sm font-medium text-gray-600">Loading document...</p>
           </div>
         )}
 
-        {/* Error Messaging Banner */}
         {error ? (
-          <div className="max-w-md w-full bg-white border border-red-100 shadow-sm p-5 rounded-xl text-center my-12">
-            <div className="text-2xl mb-2">⚠️</div>
-            <h5 className="text-sm font-bold text-gray-800 mb-1">Unable to Preview PDF</h5>
-            <p className="text-xs text-gray-500 leading-relaxed">{error}</p>
+          <div className="max-w-lg w-full bg-white border border-red-100 rounded-2xl p-8 text-center shadow-sm">
+            <div className="text-5xl mb-4">📄</div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">Couldn't Load PDF</h3>
+            <p className="text-gray-600 text-sm leading-relaxed">{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-6 px-5 py-2.5 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition"
+            >
+              Try Again
+            </button>
           </div>
         ) : (
-          /* Main PDF Document Canvas Container */
-          <div className="shadow-lg border border-gray-200/70 rounded-lg overflow-hidden bg-white transition-all duration-200 transform origin-top hover:shadow-xl">
+          <div className="shadow-2xl border border-gray-200 rounded-2xl overflow-hidden bg-white">
             <Document
               file={file}
               onLoadSuccess={onDocumentLoadSuccess}
               onLoadError={onDocumentLoadError}
-              loading={null} // Handled by our custom layout wrapper above
               options={options}
+              loading={null}
             >
               <Page
                 pageNumber={pageNumber}
                 scale={scale}
                 renderTextLayer={true}
                 renderAnnotationLayer={true}
-                className="max-w-full"
+                onRenderSuccess={() => setIsRendering(false)}
+                className="shadow-inner"
               />
             </Document>
           </div>
         )}
+      </div>
+
+      {/* Bottom Status Bar */}
+      <div className="bg-white border-t border-gray-200 px-6 py-2.5 text-xs text-gray-500 flex items-center justify-between">
+        <div>
+          {numPages && `Page ${pageNumber} of ${numPages}`}
+        </div>
+        <div className="text-emerald-600 font-medium">
+          Powered by PDF.js
+        </div>
       </div>
     </div>
   );

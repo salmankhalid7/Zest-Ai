@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-
 const favoriteSchema = new mongoose.Schema(
   {
     userId: {
@@ -8,21 +7,20 @@ const favoriteSchema = new mongoose.Schema(
       required: true,
     },
 
-    type: {
+    favoriteType: {
       type: String,
-      enum: ["flashcard", "quiz"],
-      required: true,
+      enum: ["flashcard", "quiz", "document"],
+      default: "document",
     },
 
     question: String,
     answer: String,
-
-    // optional for quiz MCQs
     options: [String],
 
     documentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Document",
+      required: true,
     },
   },
   { timestamps: true }
